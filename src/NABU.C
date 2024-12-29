@@ -16,7 +16,6 @@
 #include "nabu.h"
 
 // TODOs
-// Add ability to save settings
 // Anywhere we use a fixed size array, scrutinize it to see if we can
 // calculate dynamically instead
 // Clean up ugly code
