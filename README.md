@@ -6,7 +6,7 @@ DOS version of the NABU Adapter
 * Fix harcoded serial port and cycle path
 
 # Building
-Use Borland Turbo C++ 3.0 for MS-DOS
+Use OpenWatcom 2.0 beta
 
 # Running
 * Copy to your DOS PC

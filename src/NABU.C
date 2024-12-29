@@ -95,6 +95,7 @@ int main( int argc, char *argv[] )
 {
    int rc ;
    char ch ;
+   printf( "Starting\n" ) ;
 
    if( ( rc = serial_open( com, 115200L, 8, 'n', 2, SER_HANDSHAKING_NONE ) ) != SER_SUCCESS )
    {
