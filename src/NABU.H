@@ -26,7 +26,6 @@ void processNABU( unsigned char, char* ) ;
 
 void freeLoadedPackets(void);
 void createTimeSegment(void);
-int resetNabuState(void);
 void sendPacket(void);
 
 int WriteCommBlock(unsigned char* bByte, int nByteLen);

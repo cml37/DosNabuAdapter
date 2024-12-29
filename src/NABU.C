@@ -23,12 +23,12 @@
 
 // TODO don't hardcode the COM port and cycle path
 int com = COM_1;
-char cyclePath = "C:\\cycle\\"
+char cyclePath[20] = "C:\\cycle\\" ;
 
 // Base on the way that byte reads are not blocking,
 // I've come up with a scheme to track the current processing
 // command byte as well as determine which stage we are in for the processing byte
-unsigned char lastResetProcessingByte = 0x0;
+unsigned char lastResetProcessingByte = 0x0 ;
 unsigned char processingByte;
 int processingByteInitialized = 0 ;
 int processingStage = 0 ;
@@ -259,7 +259,7 @@ void populatePacketHeaderAndCrc( long offset, unsigned char lastSegment, unsigne
 }
 
 // Create a file packet based on the current packet and segment number
-int createFilePacket( char* filePath)
+int createFilePacket( char* filePath )
 {
    char segmentName[ 100 ] ;
    FILE *file ;
@@ -531,11 +531,12 @@ int handleFileRequest( unsigned char b, char* filePath )
 }
 
 // Reset the NABU state machine
-void resetNabuState()
+int resetNabuState( )
 {
    processingByteInitialized = 0 ;
    processingStage = 0 ;
    freeLoadedPackets() ;
+   return 1 ;
 }
 
 // Main NABU processing loop
