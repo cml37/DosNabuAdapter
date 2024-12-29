@@ -17,11 +17,13 @@
 
 // TODOs
 // Add ability to save settings
-// Use standard Windows functions for items like malloc, strcpy, etc.
 // Anywhere we use a fixed size array, scrutinize it to see if we can
 // calculate dynamically instead
 // Clean up ugly code
-// Don't lock the GUI while downloading files
+
+// TODO don't hardcode the COM port and cycle path
+int com = COM_1;
+char cyclePath = "C:\\cycle\\"
 
 // Base on the way that byte reads are not blocking,
 // I've come up with a scheme to track the current processing
@@ -32,14 +34,12 @@ int processingByteInitialized = 0 ;
 int processingStage = 0 ;
 
 // The current packet and segment number for a file request
-int   packetNumber ;
+int           packetNumber ;
 unsigned long segmentNumber ;
 
 // The current loaded packet for a file request, along with its length
 unsigned char *loadedPacketPtr = NULL ;
 int            loadedPacketLength = 0 ;
-
-int com = COM_1;
 
 long cycleCrcTable[] =
     { 0L, 4129L, 8258L, 12387L, 16516L, 20645L, 24774L, 28903L, 33032L, 37161L, 41290L,
@@ -72,65 +72,73 @@ long cycleCrcTable[] =
 
 char* errors[] =
 {
-    "Successful",
-    "Unknown error",
-    "Port not open",
-    "Port already open",
-    "No UART found on that comport",
-    "Invalid comport",
-    "Invalid BPS",
-    "Invalid data bits",
-    "Invalid parity",
-    "Invalid stop bits",
-    "Invalid handshaking",
-    "Invalid fifo threshold",
-    "Passed in a NULL pointer",
-    "",
-    "",
-    ""
+   "Successful",
+   "Unknown error",
+   "Port not open",
+   "Port already open",
+   "No UART found on that comport",
+   "Invalid comport",
+   "Invalid BPS",
+   "Invalid data bits",
+   "Invalid parity",
+   "Invalid stop bits",
+   "Invalid handshaking",
+   "Invalid fifo threshold",
+   "Passed in a NULL pointer",
+   "",
+   "",
+   ""
 };
 
-
-int main()
+// The entry point to the program
+int main( int argc, char *argv[] )
 {
+   int rc ;
+   char ch ;
 
-    int rc;
-    char ch = 0x00;
+   if( ( rc = serial_open( com, 115200L, 8, 'n', 2, SER_HANDSHAKING_NONE ) ) != SER_SUCCESS )
+   {
+      printf( "Can't open port! (%s)\n", errors[ -rc ] ) ;
+      return 0 ;
+   }
 
-    if((rc=serial_open(com, 115200L, 8, 'n', 2, SER_HANDSHAKING_NONE)) != SER_SUCCESS)
- 	 {
-		printf("Can't open port! (%s)\n", errors[-rc]);
-      return 0;
-    }
+   printf( "Port opened\n") ;
+   for(;;)
+   {
+      if ( kbhit() )
+      {
+         // End processing if we get a CTRL + C
+         if ( getch() == 0x1b )
+         {
+            break ;
+         }
+      }
+      if( ( serial_read( com, &ch, 1 ) ) > 0 ) {
+         processNABU( ch, cyclePath ) ;
+      }
+   }
 
-    printf("Port opened\n");
-    for(;;)
-    {
-        if (kbhit())
-          if (getch() == 0x1b)
-            break;
-        if((serial_read(com, &ch, 1)) > 0) {
-           processNABU(ch, "C:\\cycle\\");
-        }
-    }
+   if( ( rc = serial_close( com ) ) != SER_SUCCESS )
+   {
+      printf( "Can't close serial port! (%s)\n", errors[ -rc ] ) ;
+   }
 
- if((rc=serial_close(com)) != SER_SUCCESS)
-        printf("Can't close serial port! (%s)\n", errors[-rc]);
-
-
-    return 0;
+   return 0 ;
 }
 
-int WriteCommBlock(unsigned char* bByte, int nByteLen) {
-   serial_write(com, (const char*)bByte, nByteLen);
-	return 1;
+// Write a block of data to the serial port
+int WriteCommBlock( unsigned char* bByte, int nByteLen )
+{
+   serial_write( com, (const char*)bByte, nByteLen ) ;
+   return 1 ;
 }
 
-int WriteCommByte(unsigned char bByte) {
-   serial_write(com, (const char*)&bByte, 1);
-	return 1;
+//  Write a single byte to the serial port
+int WriteCommByte( unsigned char bByte )
+{
+   serial_write( com, (const char*)&bByte, 1 ) ;
+   return 1 ;
 }
-
 
 // If we have a loaded packet, free it, and reset the packet pointer and length
 void freeLoadedPackets()
@@ -253,7 +261,6 @@ void populatePacketHeaderAndCrc( long offset, unsigned char lastSegment, unsigne
 // Create a file packet based on the current packet and segment number
 int createFilePacket( char* filePath)
 {
-   //char message[ 80 ] ;
    char segmentName[ 100 ] ;
    FILE *file ;
    long fileSize = 0 ;
@@ -265,7 +272,7 @@ int createFilePacket( char* filePath)
    file = fopen( segmentName, "rb" ) ;
    if ( file == NULL )
    {
-		return 0 ;
+      return 0 ;
    }
 
    fseek( file, 0, SEEK_END ) ;
@@ -282,7 +289,7 @@ int createFilePacket( char* filePath)
             loadedPacketPtr = ( unsigned char* )malloc( PACKET_HEADER_SIZE + PACKET_DATA_SIZE + PACKET_CRC_SIZE ) ;
             if ( loadedPacketPtr == NULL )
             {
-               printf("Error allocating memory\n" ) ;
+               printf( "Error allocating memory\n" ) ;
                fclose( file ) ;
                return 0 ;
             }
@@ -308,7 +315,6 @@ int createFilePacket( char* filePath)
 // Load a file packet based on the current packet and segment number
 int loadFilePacket( char* filePath )
 {
-   //char message[ 80 ] ;
    int packetLength = 0 ;
    char segmentName[ 100 ] ;
    FILE *file ;
@@ -320,7 +326,7 @@ int loadFilePacket( char* filePath )
    file = fopen( segmentName, "rb" ) ;
    if ( file == NULL )
    {
-		return 0 ;
+      return 0 ;
    }
 
    fseek( file, 0, SEEK_END ) ;
@@ -395,7 +401,6 @@ void sendPacket( )
 // Handle a file request
 int handleFileRequest( unsigned char b, char* filePath )
 {
-   //char message[ 80 ] ;
    unsigned char write[ 4 ] ;
    unsigned long tmp ;
 
@@ -441,7 +446,7 @@ int handleFileRequest( unsigned char b, char* filePath )
       tmp = ( unsigned char )b ;
       tmp = tmp << 16 ;
       segmentNumber = segmentNumber + tmp ;
-      printf("Segment %06lX, Packet %06X \r\n", segmentNumber, packetNumber ) ;
+      printf( "Segment %06lX, Packet %06X \r\n", segmentNumber, packetNumber ) ;
 
       WriteCommByte(0xE4) ;
 
@@ -526,19 +531,17 @@ int handleFileRequest( unsigned char b, char* filePath )
 }
 
 // Reset the NABU state machine
-int resetNabuState()
+void resetNabuState()
 {
    processingByteInitialized = 0 ;
    processingStage = 0 ;
    freeLoadedPackets() ;
-   return 1 ;
 }
 
 // Main NABU processing loop
 void processNABU( unsigned char b, char* filePath )
 {
    int channel ;
-   // char message[ 40 ] ;
    unsigned char write[ 3 ];
    unsigned char switchingByte = b ;
 
