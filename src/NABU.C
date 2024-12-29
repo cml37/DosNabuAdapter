@@ -21,9 +21,11 @@
 // calculate dynamically instead
 // Clean up ugly code
 
-// TODO don't hardcode the COM port and cycle path
-int com = COM_1;
+// The cycle path
 char cyclePath[20] = "C:\\cycle\\" ;
+
+// The COM port
+int com = 0;
 
 // Base on the way that byte reads are not blocking,
 // I've come up with a scheme to track the current processing
@@ -95,7 +97,42 @@ int main( int argc, char *argv[] )
 {
    int rc ;
    char ch ;
-   printf( "Starting\n" ) ;
+
+    if( argc < 2 )
+    {
+       printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> \n" ) ;
+       return 0 ;
+    }
+
+    switch( atoi( argv[1] ) )
+    {
+       case 1:
+          com = COM_1 ;
+          break ;
+       case 2:
+          com = COM_2 ;
+          break ;
+       case 3:
+          com = COM_3 ;
+          break ;
+       case 4:
+          com = COM_4 ;
+          break ;
+       default:
+          printf( "%s: invalid com port number\n", argv[ 1 ] ) ;
+          return 0 ;
+    }
+
+   if( argc == 3 )
+   {
+      strcpy( cyclePath, argv [ 2 ] );
+      if ( strlen( cyclePath ) < 20 && cyclePath[ strlen( cyclePath - 1 ) ] != '\\')
+      {
+         strcat( cyclePath, "\\");
+      }
+   }
+
+   printf( "Starting and using serial port COM%s and cycle path %s\n", argv[1], cyclePath) ;
 
    if( ( rc = serial_open( com, 115200L, 8, 'n', 2, SER_HANDSHAKING_NONE ) ) != SER_SUCCESS )
    {
@@ -103,7 +140,6 @@ int main( int argc, char *argv[] )
       return 0 ;
    }
 
-   printf( "Port opened\n") ;
    for(;;)
    {
       if ( kbhit() )
@@ -469,10 +505,10 @@ int handleFileRequest( unsigned char b, char* filePath )
       {
          if ( !createFilePacket( filePath ) )
          {
-                   printf( "Could not load segment %06X and packet %06X\r\n", segmentNumber, packetNumber );
-                   WriteCommByte( 0x90 ) ;
-                   processingStage = 5;
-                   return 1 ;
+            printf( "Could not load segment %06X and packet %06X\r\n", segmentNumber, packetNumber );
+            WriteCommByte( 0x90 ) ;
+            processingStage = 5;
+            return 1 ;
          }
       }
 
