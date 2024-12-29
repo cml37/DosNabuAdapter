@@ -887,7 +887,9 @@ int serial_open(int comport, long bps, int data_bits, char parity, int stop_bits
     UART_WRITE_INTERRUPT_ENABLE(com, 0);
 
     /* Auto-detect IRQ if we can */
-    if((rc=serial_find_irq(comport)) < 0)
+    // IRQ Auto detect makes my Tandy very upset, maybe we make this configurable
+	// TODO solution autodetect or make configurable
+    //if((rc=serial_find_irq(comport)) < 0)
         rc = com->default_irq;
 
     if((rc=serial_set_irq(comport, rc)) != SER_SUCCESS)

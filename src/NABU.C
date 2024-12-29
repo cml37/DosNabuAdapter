@@ -114,7 +114,8 @@ int main( int argc, char *argv[] )
             break ;
          }
       }
-      if( ( serial_read( com, &ch, 1 ) ) > 0 ) {
+      if( ( serial_read( com, &ch, 1 ) ) > 0 )
+      {
          processNABU( ch, cyclePath ) ;
       }
    }
