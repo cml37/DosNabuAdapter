@@ -14,6 +14,7 @@
 //---------------------------------------------------------------------------
 
 #include "nabu.h"
+#include "utils.h"
 
 // TODOs
 // Anywhere we use a fixed size array, scrutinize it to see if we can
@@ -101,6 +102,11 @@ int main( int argc, char *argv[] )
     {
        printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> \n" ) ;
        return 0 ;
+    }
+
+    if (isTandy8088or8086())
+    {
+       printf("8088/8086 Tandy detected\n");
     }
 
     switch( atoi( argv[1] ) )
