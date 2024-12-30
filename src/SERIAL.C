@@ -1,6 +1,7 @@
 #include <conio.h>
 #include <dos.h>
 #include "serial.h"
+#include "utils.h"
 
 #if defined( __DJGPP__ )
 #include <sys/farptr.h>
@@ -727,10 +728,21 @@ static void serial_remove_irqhandler(int irq)
 static int serial_find_irq(int comport)
 {
     serial_struct* com = (serial_struct*)(g_comports + comport);
-    unsigned char imr_m = PIC_READ_IMR(PIC_MASTER); /* Interrupt Mask Registers */
-    unsigned char imr_s = PIC_READ_IMR(PIC_SLAVE);
-    unsigned char irr_m;                                /* Interrupt Request Registers */
+
+    /* Interrupt Mask Registers */
+    unsigned char imr_m;
+    unsigned char imr_s;
+
+    /* Interrupt Request Registers */
+    unsigned char irr_m;
     unsigned char irr_s;
+
+    imr_m = PIC_READ_IMR(PIC_MASTER);
+
+    /* Messing with non existant slave IMR/IRR on Tandy 1000 systems with 8086/8088 processors will possibly make them upset */
+    /* Apparently some (or all) Tandy 1000 systems with single PICs set the first three bits of 0xa0 to indicate memory configuration */
+    if (!isTandy8088or8086())
+        imr_s = PIC_READ_IMR(PIC_SLAVE);
 
     /* Set up the UART */
     UART_WRITE_MODEM_CONTROL(com, UART_MCR_OUT2);
@@ -743,34 +755,47 @@ static int serial_find_irq(int comport)
 
     /* Allow any interrupt on PIC */
     PIC_WRITE_IMR(PIC_MASTER, 0);
-    PIC_WRITE_IMR(PIC_SLAVE, 0);
+
+    if(!isTandy8088or8086())
+        PIC_WRITE_IMR(PIC_SLAVE, 0);
 
     /* Do some initial polls to let things settle (win95 needs this) */
     UART_WRITE_INTERRUPT_ENABLE(com, UART_IER_TX_HOLD_EMPTY);
     PIC_READ_IRR(PIC_MASTER);
-    PIC_READ_IRR(PIC_SLAVE);
+
+    if(!isTandy8088or8086())
+        PIC_READ_IRR(PIC_SLAVE);
     UART_WRITE_INTERRUPT_ENABLE(com, 0);
     PIC_READ_IRR(PIC_MASTER);
-    PIC_READ_IRR(PIC_SLAVE);
+
+    if(!isTandy8088or8086())
+        PIC_READ_IRR(PIC_SLAVE);
 
     /* Generate an interrupt and record all active IRQs */
     UART_WRITE_INTERRUPT_ENABLE(com, UART_IER_TX_HOLD_EMPTY);
     irr_m = PIC_READ_IRR(PIC_MASTER);
-    irr_s = PIC_READ_IRR(PIC_SLAVE);
+
+    if(!isTandy8088or8086())
+        irr_s = PIC_READ_IRR(PIC_SLAVE);
 
     /* Remove the interrupt and mask out all IRQs still active */
     UART_WRITE_INTERRUPT_ENABLE(com, 0);
     irr_m &= ~PIC_READ_IRR(PIC_MASTER);
-    irr_s &= ~PIC_READ_IRR(PIC_SLAVE);
+
+    if(!isTandy8088or8086())
+        irr_s &= ~PIC_READ_IRR(PIC_SLAVE);
 
     /* Interrupt again to make sure */
     UART_WRITE_INTERRUPT_ENABLE(com, UART_IER_TX_HOLD_EMPTY);
     irr_m &= PIC_READ_IRR(PIC_MASTER);
-    irr_s &= PIC_READ_IRR(PIC_SLAVE);
+
+    if(!isTandy8088or8086())
+        irr_s &= PIC_READ_IRR(PIC_SLAVE);
 
     /* Return everything to normal */
     PIC_WRITE_IMR(PIC_MASTER, imr_m);
-    PIC_WRITE_IMR(PIC_SLAVE, imr_s);
+    if(!isTandy8088or8086())
+        PIC_WRITE_IMR(PIC_SLAVE, imr_s);
     UART_WRITE_INTERRUPT_ENABLE(com, 0);
 
     CPU_ENABLE_INTERRUPTS();
@@ -887,9 +912,7 @@ int serial_open(int comport, long bps, int data_bits, char parity, int stop_bits
     UART_WRITE_INTERRUPT_ENABLE(com, 0);
 
     /* Auto-detect IRQ if we can */
-    // IRQ Auto detect makes my Tandy very upset, maybe we make this configurable
-	// TODO solution autodetect or make configurable
-    //if((rc=serial_find_irq(comport)) < 0)
+    if((rc=serial_find_irq(comport)) < 0)
         rc = com->default_irq;
 
     if((rc=serial_set_irq(comport, rc)) != SER_SUCCESS)
