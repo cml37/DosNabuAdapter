@@ -104,9 +104,14 @@ int main( int argc, char *argv[] )
        return 0 ;
     }
 
-    if (isTandy8088or8086())
+    if ( isTandy1000() )
     {
-       printf("8088/8086 Tandy detected\n");
+       printf("Tandy 1000 detected\n") ;
+    }
+
+    if ( cpuIs8088or8086() )
+    {
+       printf("CPU is 8088/8086\n") ;
     }
 
     switch( atoi( argv[1] ) )

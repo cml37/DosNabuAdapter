@@ -1,6 +1,7 @@
 #include <dos.h>
 
-int isTandy8088or8086();
+int isTandy1000();
+int cpuIs8088or8086();
 
 enum VideoCard {
     videoCard_mda = 0,

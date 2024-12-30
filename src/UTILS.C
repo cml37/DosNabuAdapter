@@ -111,8 +111,7 @@ int cpuIs8088or8086()
 }
 
 // Return whether we detect a Tandy 8088/8086 or not
-int isTandy8088or8086()
+int isTandy1000()
 {
-   return cpuIs8088or8086() &&
-      ( detectVideoMode() == videoCard_tandy1000 || detectVideoMode() == videoCard_tandySLTL );
+   return ( detectVideoMode() == videoCard_tandy1000 || detectVideoMode() == videoCard_tandySLTL );
 }
