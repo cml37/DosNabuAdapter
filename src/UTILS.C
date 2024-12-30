@@ -21,7 +21,6 @@ int detectVideoMode()
    union REGS regs ;
    char far *ptr ;
 
-
    // VGA only enable video
    regs.w.ax = 0x1200 ;
    regs.h.bl = 0x32 ;
@@ -54,7 +53,7 @@ int detectVideoMode()
       return videoCard_mda ;
    }
 
-   //second to last byte PCjr BIOS info area
+   // Second to last byte PCjr BIOS info area
    ptr = _MK_FP( 0xf000, 0xfffe ) ;
    if ( *ptr == 0xFD )
    {
