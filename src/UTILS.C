@@ -38,7 +38,7 @@ int detectVideoMode()
    int86( 0x10, &regs, &regs ) ;
 
    // EGA/VGA returns a 0..3 value here
-   if (regs.h.bl & 0x3 != 0)
+   if ( regs.h.bl & 0x3 != 0 )
    {
       return videoCard_ega ;
    }
@@ -61,11 +61,11 @@ int detectVideoMode()
    }
 
    // Tandys will return FF for second to last byte
-   if (*ptr == 0xFF)
+   if ( *ptr == 0xFF )
    {
       // All Tandys return 0x21 at this address
-      ptr = _MK_FP(0xf000, 0xc000) ;
-      if (*ptr == 0x21)
+      ptr = _MK_FP( 0xf000, 0xc000 ) ;
+      if ( *ptr == 0x21 )
       {
          // Get System Environment
          regs.h.ah = 0xC0 ;
