@@ -98,39 +98,39 @@ int main( int argc, char *argv[] )
    int rc ;
    char ch ;
 
-    if( argc < 2 )
-    {
-       printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> \n" ) ;
-       return 0 ;
-    }
+   if( argc < 2 )
+   {
+      printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> \n" ) ;
+      return 0 ;
+   }
 
-    if ( isTandy1000() )
-    {
-       printf("Tandy 1000 detected\n") ;
-    }
+   if ( isTandy1000() )
+   {
+      printf("Tandy 1000 detected\n") ;
+   }
 
-    if ( cpuIs8088or8086() )
-    {
-       printf("CPU is 8088/8086\n") ;
-    }
+   if ( cpuIs8088or8086() )
+   {
+      printf("CPU is 8088/8086\n") ;
+   }
 
-    switch( atoi( argv[1] ) )
-    {
-       case 1:
-          com = COM_1 ;
-          break ;
-       case 2:
-          com = COM_2 ;
-          break ;
-       case 3:
-          com = COM_3 ;
-          break ;
-       case 4:
-          com = COM_4 ;
-          break ;
-       default:
-          printf( "%s: invalid com port number\n", argv[ 1 ] ) ;
-          return 0 ;
+   switch( atoi( argv[1] ) )
+   {
+      case 1:
+         com = COM_1 ;
+         break ;
+      case 2:
+         com = COM_2 ;
+         break ;
+      case 3:
+         com = COM_3 ;
+         break ;
+      case 4:
+         com = COM_4 ;
+         break ;
+      default:
+         printf( "%s: invalid com port number\n", argv[ 1 ] ) ;
+         return 0 ;
     }
 
    if( argc == 3 )
