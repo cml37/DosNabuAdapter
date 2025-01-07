@@ -16,6 +16,11 @@
 #include "nabu.h"
 #include "utils.h"
 
+extern "C" 
+{
+   #include "nabutils.h"
+}
+
 // TODOs
 // Anywhere we use a fixed size array, scrutinize it to see if we can
 // calculate dynamically instead

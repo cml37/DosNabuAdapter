@@ -1,3 +1,6 @@
+#ifndef _NABUTILS_H
+#define _NABUTILS_H
+
 #include <dos.h>
 
 int isTandy1000() ;
@@ -13,3 +16,5 @@ enum VideoCard {
    videoCard_ega = 5,
    videoCard_vga = 6
 };
+
+#endif

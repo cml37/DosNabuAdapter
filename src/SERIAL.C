@@ -1,7 +1,7 @@
 #include <conio.h>
 #include <dos.h>
 #include "serial.h"
-#include "utils.h"
+#include "nabutils.h"
 
 #if defined( __DJGPP__ )
 #include <sys/farptr.h>

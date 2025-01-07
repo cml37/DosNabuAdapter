@@ -13,13 +13,20 @@
 //
 //---------------------------------------------------------------------------
 
+#ifndef _NABU_H
+#define _NABU_H
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <io.h>
 #include <conio.h>
-#include "serial.h"
+
+extern "C"
+{
+   #include "serial.h"
+}
 
 int resetNabuState() ;
 void processNABU( unsigned char, char* ) ;
@@ -36,3 +43,4 @@ int WriteCommByte(unsigned char bByte);
 #define PACKET_CRC_SIZE 2
 #define TIME_SEGMENT_SIZE 29
 
+#endif
