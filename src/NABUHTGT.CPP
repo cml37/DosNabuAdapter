@@ -71,7 +71,7 @@
 
 
 bool     Verbose = false;
-bool     QuietMode = false;
+bool     QuietMode = true;
 
 
 // Globals filled in as a result of an HTTP response
@@ -79,6 +79,8 @@ bool     TransferEncoding_Chunked = false;
 bool     ExpectedContentLengthSent = false;
 uint32_t ExpectedContentLength = 0;
 uint16_t HttpResponse = 500;
+bool     CurrentlyProcessing = false;
+bool     mTcpInitialized = false;
 
 // Server and file information
 char Hostname[ HOSTNAME_LEN ];
@@ -198,9 +200,40 @@ inline void verboseMessage( char *fmt, ... ) {
   }
 }
 
-// We'll define an empty interrupt handler.
+
+
+// Ctrl-Break and Ctrl-C handler.  Check the flag once in a while to see if
+// the user wants out.
+
+volatile uint8_t CtrlBreakDetected = 0;
+
 void __interrupt __far ctrlBreakHandler( ) {
+  CtrlBreakDetected = 1;
 }
+
+uint8_t userWantsOut( void ) {
+
+  if ( CtrlBreakDetected ) {
+    errorMessage( "Ctrl-Break detected - aborting!\n" );
+    return 1;
+  }
+
+  if ( biosIsKeyReady( ) ) {
+    char c = biosKeyRead( );
+    if ( (c == 27) || (c == 3) ) {
+      errorMessage( "Esc or Ctrl-C detected - aborting!\n");
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+
+bool exitRequested() {
+  return CtrlBreakDetected && !CurrentlyProcessing;
+}
+
 
 // Ends the TCP/IP stack.
 // Use this after TCP/IP has been successfully initialized.
@@ -212,6 +245,7 @@ static void shutdown( int rc ) {
 
 enum StopCode {
   NotDone,
+  UserBreak,
   FileError,
   SocketError,
   SocketClosed,
@@ -264,6 +298,8 @@ void drainAndCloseSocket( void ) {
   verboseMessage( "%lu bytes read while draining the socket\n", bytesRead );
 
   sock->close( );
+  TcpSocketMgr::freeSocket(sock);
+  sock = NULL;
 }
 
 
@@ -301,6 +337,11 @@ StopCode fillInBuf( void ) {
 
 
   while ( (rc == NotDone) && bytesToRead ) {
+
+    if ( userWantsOut( ) ) {
+      rc = UserBreak;
+      break;
+    }
 
     // Service the connection
     PACKET_PROCESS_MULT( 5 );
@@ -494,6 +535,8 @@ int8_t resolve( char *ServerAddrName, IpAddr_t &serverAddr ) {
 
   while ( !done ) {
 
+    if ( userWantsOut( ) ) break;
+
     if ( !Dns::isQueryPending( ) ) break;
 
     PACKET_PROCESS_MULT(5);
@@ -541,6 +584,8 @@ int8_t connectSocket( void ) {
   start = lastCheck = TIMER_GET_CURRENT( );
 
   while ( 1 ) {
+
+    if ( userWantsOut( ) ) break;
 
     PACKET_PROCESS_MULT(5);
     Tcp::drivePackets( );
@@ -841,6 +886,11 @@ int readContent( char* outputFilename ) {
       TRACE(( "HTGET: File write loop: nextChunkSize=%lu, inBufStartIndex=%u, inBufLen=%u\n",
               nextChunkSize, inBufStartIndex, inBufLen ));
 
+      if ( userWantsOut( ) ) {
+        stopCode = UserBreak;
+        break;
+      }
+
       // If inBuf is empty fill it.  Reading more than we need for this chunk is fine.
 
       if ( inBufLen == 0 ) {
@@ -865,7 +915,7 @@ int readContent( char* outputFilename ) {
 
       // Write whatever is in inBuf.
 
-      uint16_t bytesToWrite = ( uint16_t ) nextChunkSize;
+      uint16_t bytesToWrite = nextChunkSize;
       if ( bytesToWrite > inBufLen ) bytesToWrite = inBufLen;
 
       TRACE(( "HTGET: before write: inBufStartIndex=%u, bytesToWrite=%u\n", inBufStartIndex, inBufLen ));
@@ -985,7 +1035,7 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
 }
 
 
-int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtension, unsigned long segmentNumber ) {
+int initialize() {
 
   TransferEncoding_Chunked = false;
   ExpectedContentLengthSent = false;
@@ -994,56 +1044,87 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
   ServerPort = 80;
   inBufLen = 0;
   inBufStartIndex = 0;
+  CurrentlyProcessing = 0;
 
-  if ( Utils::parseEnv( ) != 0 ) {
+  if ( !mTcpInitialized ) {
+    if ( Utils::parseEnv( ) != 0 ) {
+      errorMessage( "Could not parse environment\n" );
+      return 0;
+    }
+
+    if ( Utils::initStack( 1, TCP_SOCKET_RING_SIZE, ctrlBreakHandler, ctrlBreakHandler ) ) {
+      errorMessage( "Error: Could not init TCP\n" );
+      return 0;
+    }
+    mTcpInitialized = 1;
+  }
+  return 1;
+}
+
+void teardown() {
+
+  if ( mTcpInitialized ) {
+    mTcpInitialized = 0;
+    shutdown(1);
+    verboseMessage( "Teardown complete\n" );
+  }
+}
+
+int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtension, unsigned long segmentNumber ) {
+
+  if (userWantsOut()) {
     return 0;
   }
 
+  if (!initialize()) {
+    errorMessage( "Could not initialize\n" );
+    return 0;
+  }
+
+  verboseMessage( "Initialized\n" );
+
+  CurrentlyProcessing = 1;
+
   if ( !parseUrl( hostAndPath, fileNameExtension, segmentNumber ) ) {
     errorMessage( "Could not parse passed in URL\n" );
+    CurrentlyProcessing = 0;
     return 0;
   }
 
   inBuf = (uint8_t *)malloc( INBUFSIZE );
   if ( !inBuf ) {
     errorMessage( "Error: Could not allocate memory\n" );
+    CurrentlyProcessing = 0;
     return 0;
   }
-
-  if ( Utils::initStack( 1, TCP_SOCKET_RING_SIZE, ctrlBreakHandler, ctrlBreakHandler ) ) {
-    errorMessage( "Error: Could not init TCP\n" );
-    free( inBuf );
-    return 0;
-  }
-
-  // From this point forward you have to call the shutdown( ) routine to
-  // exit because we have the timer interrupt hooked.
 
   if ( resolve(Hostname, HostAddr) ) {
     errorMessage( "Error: Could not resolve hostname\n" );
     free( inBuf );
-    shutdown( 1 );
+    CurrentlyProcessing = 0;
     return 0;
   }
 
   if ( connectSocket( ) ) {
     errorMessage( "Error: Could not connect to socket\n" );
     free( inBuf );
-    shutdown( 1 );
+    CurrentlyProcessing = 0;
     return 0;
   }
 
   if ( sendHeaders( ) ) {
     errorMessage( "Error: Could not send headers\n" );
+    drainAndCloseSocket();
     free( inBuf );
-    shutdown( 1 );
+    CurrentlyProcessing = 0;
     return 0;
   }
 
   if ( readHeaders( ) ) {
-    errorMessage( "Error: Could not read headers\n" );
+    verboseMessage( "Zero length headers\n" );
+    drainAndCloseSocket();
     free( inBuf );
-    shutdown( 1 );
+    CurrentlyProcessing = 0;
     return 0;
   }
 
@@ -1062,6 +1143,7 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
     strncpy( fileNameCorrectedExtension, fileNameExtension, 4 );
     fileNameCorrectedExtension[ 4 ] = 0;
     sprintf( fileName, "%s%06lX%s", filePath, segmentNumber, fileNameCorrectedExtension );
+    verboseMessage( "Reading content to filename %s\n", fileName );
     rc = readContent( fileName );
   }
 
@@ -1075,6 +1157,6 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
   }
 
   free( inBuf );
-  shutdown( rc );
+  CurrentlyProcessing = 0;
   return 1;
 }

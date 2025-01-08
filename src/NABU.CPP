@@ -174,6 +174,11 @@ int main( int argc, char *argv[] )
             break ;
          }
       }
+      if ( exitRequested() )
+      {
+         teardown() ;
+         break ;
+      }
       if( ( serial_read( com, &ch, 1 ) ) > 0 )
       {
          processNABU( ch, cyclePath, hostAndPath ) ;
@@ -321,7 +326,7 @@ void populatePacketHeaderAndCrc( long offset, unsigned char lastSegment, unsigne
 }
 
 // Create a file packet based on the current packet and segment number
-int createFilePacket( char* filePath, char* hostAndPath, int tryDownload)
+int createFilePacket( char* filePath, char* hostAndPath, int tryDownload )
 {
    char segmentName[ 100 ] ;
    FILE *file ;
