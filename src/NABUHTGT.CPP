@@ -945,6 +945,9 @@ int readContent( char* outputFilename ) {
 
 static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned long segmentNumber ) {
 
+    char fileName[200];
+    sprintf(fileName, "/%06lX%s", segmentNumber, fileNameExtension);
+
     char *pathStart = strchr( hostnameAndPath, '/' );
     if ( pathStart == NULL ) {
 
@@ -952,7 +955,8 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
       Hostname[ HOSTNAME_LEN - 1 ] = 0;
 
       Path[0] = '/';
-      sprintf( &Path[1], "%06lX%s", segmentNumber, fileNameExtension );
+      Path[1] = 0;
+      strncat(Path, fileName, PATH_LEN - strlen(Path));
     }
     else {
 
@@ -960,8 +964,8 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
       Hostname[ HOSTNAME_LEN - 1 ] = 0;
 
       strncpy( Path, pathStart, PATH_LEN );
-      sprintf( &Path[ PATH_LEN - 1 ], "%06lX%s", segmentNumber, fileNameExtension );
-
+      Path[ PATH_LEN - 1 ] = 0;
+      strncat(Path, fileName, PATH_LEN - strlen(Path));
     }
 
 

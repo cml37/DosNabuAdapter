@@ -272,6 +272,8 @@ class Utils {
     // The old Ctrl-Break handler so we can restore it in endStack.
     static void ( __interrupt __far *oldCtrlBreakHandler)( );
 
+    // The old Ctrl-C handler so we can restore it in endStack.
+    static void ( __interrupt __far *oldCtrlCHandler)( );
 
 };
 

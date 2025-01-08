@@ -156,6 +156,7 @@ FILE   *Utils::CfgFile = NULL;
 char   *Utils::CfgFilenamePtr = NULL;
 
 void ( __interrupt __far *Utils::oldCtrlBreakHandler)( );
+void ( __interrupt __far *Utils::oldCtrlCHandler)( );
 
 char Utils::lineBuffer[UTILS_LINEBUFFER_LEN];
 char Utils::parmName[UTILS_PARAMETER_LEN];
@@ -511,7 +512,7 @@ int8_t Utils::parseEnv( void ) {
     }
 
   }
-    
+
 
   #ifdef COMPILE_DNS
   if ( Preferred_nameserver_set ) {
@@ -768,6 +769,7 @@ int8_t Utils::initStack( uint8_t tcpSockets,
   // Install the new Ctrl-Break and Ctrl-C handlers.
   //
   oldCtrlBreakHandler = getvect( 0x1b );
+  oldCtrlCHandler = getvect( 0x23 );
   setvect( 0x1b, newCtrlBreakHandler );
   setvect( 0x23, newCtrlCHandler );
 
@@ -791,7 +793,7 @@ int8_t Utils::initStack( uint8_t tcpSockets,
     fprintf( stderr, InitErrorMsg, "EtherTypes" );
     return -1;
   }
-    
+
 
 
   // We want this to appear if any type of tracing is turned on.  The normal
@@ -1039,6 +1041,7 @@ void Utils::endStack2( bool ignoreTracing ) {
   // (We do not need to unload a Ctrl-C handler; DOS will do that.)
   //
   setvect( 0x1b, oldCtrlBreakHandler);
+  setvect( 0x23, oldCtrlCHandler);
 
 
   // This just frees memory.
@@ -1053,7 +1056,7 @@ void Utils::endStack2( bool ignoreTracing ) {
   #endif
 
 
-  if ( _heapchk( ) != _HEAPOK ) {
+  if ( _heapchk( ) != _HEAPOK  && _heapchk () != _HEAPEMPTY) {
     fprintf( stderr, "End: heap is corrupted!\n" );
   }
 
