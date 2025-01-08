@@ -1,6 +1,6 @@
 //---------------------------------------------------------------------------
 //
-//  Module: nabu.c
+//  Module: nabu.cpp
 //
 //  Purpose:
 //     Capabilities to support driving a NABU adaptor
@@ -15,7 +15,7 @@
 
 #include "nabu.h"
 #include "utils.h"
-#include "htget.h"
+#include "nabuhtgt.h"
 
 extern "C"
 {

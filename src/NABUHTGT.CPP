@@ -1,11 +1,13 @@
 /*
+   NABU HTGet
+   Created by Chris Lenderman
 
-   mTCP HTGet.cpp
+   Based off of mTCP HTGet.cpp
    Copyright (C) 2011-2024 Michael B. Brutman (mbbrutman@gmail.com)
    mTCP web page: http://www.brutman.com/mTCP
 
 
-   This file is part of mTCP.
+   HTGet.cpp is part of mTCP.
 
    mTCP is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -21,16 +23,12 @@
    along with mTCP.  If not, see <http://www.gnu.org/licenses/>.
 
 
-   Description: Htget for DOS, inspired by a version that Ken Yap
-   (ken@syd.dit.csiro.au) wrote in 1997.
+   Description: NABUGet for DOS, used for downloading NABU segment
+   from the Internet
 
    Changes:
 
-   2011-07-17: Initial version
-   2015-01-18: Minor change to Ctrl-Break and Ctrl-C handling.
-   2018-10-29: Add more error checking on file writes;
-               Add a quiet mode.
-   2019-01-04: Rewrite to support chunked transfers.
+   2025-01-07: Initial version
 
 */
 
@@ -201,10 +199,11 @@ inline void verboseMessage( char *fmt, ... ) {
   }
 }
 
+// We'll define an empty interrupt handler.
 void __interrupt __far ctrlBreakHandler( ) {
 }
 
-// Ends the TCP/IP stack and ends the program in a sane way.
+// Ends the TCP/IP stack.
 // Use this after TCP/IP has been successfully initialized.
 
 static void shutdown( int rc ) {
@@ -761,12 +760,12 @@ int readContent( char* outputFilename ) {
 
   verboseMessage( "Receiving content\n" );
 
-  // Open output file now if specified.  If not valid, return
+  // Open output file now if specified.  If not valid, return.
 
   FILE *outputFile = fopen( outputFilename, "wb" );
   if ( outputFile == NULL ) {
     fileWriteError( errno );
-    return 0;
+    return -1;
   }
 
   // By this point:
@@ -866,7 +865,7 @@ int readContent( char* outputFilename ) {
 
       // Write whatever is in inBuf.
 
-      uint16_t bytesToWrite = (uint16_t)nextChunkSize;
+      uint16_t bytesToWrite = ( uint16_t ) nextChunkSize;
       if ( bytesToWrite > inBufLen ) bytesToWrite = inBufLen;
 
       TRACE(( "HTGET: before write: inBufStartIndex=%u, bytesToWrite=%u\n", inBufStartIndex, inBufLen ));
@@ -949,19 +948,19 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
     char *pathStart = strchr( hostnameAndPath, '/' );
     if ( pathStart == NULL ) {
 
-       strncpy( Hostname, hostnameAndPath, HOSTNAME_LEN );
-       Hostname[ HOSTNAME_LEN - 1 ] = 0;
+      strncpy( Hostname, hostnameAndPath, HOSTNAME_LEN );
+      Hostname[ HOSTNAME_LEN - 1 ] = 0;
 
-       Path[0] = '/';
-       sprintf(&Path[1], "%06lX%s", segmentNumber, fileNameExtension);
+      Path[0] = '/';
+      sprintf( &Path[1], "%06lX%s", segmentNumber, fileNameExtension );
     }
     else {
 
-       strncpy( Hostname, hostnameAndPath, pathStart - hostnameAndPath );
-       Hostname[ HOSTNAME_LEN - 1 ] = 0;
+      strncpy( Hostname, hostnameAndPath, pathStart - hostnameAndPath );
+      Hostname[ HOSTNAME_LEN - 1 ] = 0;
 
-       strncpy( Path, pathStart, PATH_LEN );
-       sprintf(&Path[ PATH_LEN - 1 ], "%06lX%s", segmentNumber, fileNameExtension);
+      strncpy( Path, pathStart, PATH_LEN );
+      sprintf( &Path[ PATH_LEN - 1 ], "%06lX%s", segmentNumber, fileNameExtension );
 
     }
 
@@ -984,99 +983,95 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
 
 int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtension, unsigned long segmentNumber ) {
 
-   NotModified = false;
-   TransferEncoding_Chunked = false;
-   ExpectedContentLengthSent = false;
-   ExpectedContentLength = 0;
-   HttpResponse = 500;
-   ServerPort = 80;
-   inBufLen = 0;
-   inBufStartIndex = 0;
+  NotModified = false;
+  TransferEncoding_Chunked = false;
+  ExpectedContentLengthSent = false;
+  ExpectedContentLength = 0;
+  HttpResponse = 500;
+  ServerPort = 80;
+  inBufLen = 0;
+  inBufStartIndex = 0;
 
-   if ( Utils::parseEnv( ) != 0 )
-   {
-       return 0;
-   }
+  if ( Utils::parseEnv( ) != 0 ) {
+    return 0;
+  }
 
-   if (!parseUrl(hostAndPath, fileNameExtension, segmentNumber) )
-   {
-      errorMessage( "Could not parse passed in URL\n" );
-      return 0;
-   }
+  if ( !parseUrl( hostAndPath, fileNameExtension, segmentNumber ) ) {
+    errorMessage( "Could not parse passed in URL\n" );
+    return 0;
+  }
 
-   inBuf = (uint8_t *)malloc( INBUFSIZE );
-   if ( !inBuf )
-   {
-      errorMessage( "Error: Could not allocate memory\n" );
-      return 0;
-   }
+  inBuf = (uint8_t *)malloc( INBUFSIZE );
+  if ( !inBuf ) {
+    errorMessage( "Error: Could not allocate memory\n" );
+    return 0;
+  }
 
-   if ( Utils::initStack( 1, TCP_SOCKET_RING_SIZE, ctrlBreakHandler, ctrlBreakHandler ) )
-   {
-      errorMessage( "Error: Could not init TCP\n" );
-      free( inBuf );
-      return 0;
-   }
+  if ( Utils::initStack( 1, TCP_SOCKET_RING_SIZE, ctrlBreakHandler, ctrlBreakHandler ) ) {
+    errorMessage( "Error: Could not init TCP\n" );
+    free( inBuf );
+    return 0;
+  }
 
-   // From this point forward you have to call the shutdown( ) routine to
-   // exit because we have the timer interrupt hooked.
+  // From this point forward you have to call the shutdown( ) routine to
+  // exit because we have the timer interrupt hooked.
 
-   if ( resolve(Hostname, HostAddr) )
-   {
-      errorMessage( "Error: Could not resolve hostname\n" );
-      free( inBuf );
-      shutdown( 1 );
-      return 0;
-   }
+  if ( resolve(Hostname, HostAddr) ) {
+    errorMessage( "Error: Could not resolve hostname\n" );
+    free( inBuf );
+    shutdown( 1 );
+    return 0;
+  }
 
-   if ( connectSocket( ) )
-   {
-      errorMessage( "Error: Could not connect to socket\n" );
-      free( inBuf );
-      shutdown( 1 );
-      return 0;
-   }
+  if ( connectSocket( ) ) {
+    errorMessage( "Error: Could not connect to socket\n" );
+    free( inBuf );
+    shutdown( 1 );
+    return 0;
+  }
 
-   if ( sendHeaders( ) )
-   {
-      errorMessage( "Error: Could not send headers\n" );
-      free( inBuf );
-      shutdown( 1 );
-      return 0;
-   }
+  if ( sendHeaders( ) ) {
+    errorMessage( "Error: Could not send headers\n" );
+    free( inBuf );
+    shutdown( 1 );
+    return 0;
+  }
 
-   if ( readHeaders( ) ) {
-      errorMessage( "Error: Could not read headers\n" );
-      free( inBuf );
-      shutdown( 1 );
-      return 0;
-   }
+  if ( readHeaders( ) ) {
+    errorMessage( "Error: Could not read headers\n" );
+    free( inBuf );
+    shutdown( 1 );
+    return 0;
+  }
 
-   int rc;
+  int rc;
 
-   if ( (ExpectedContentLengthSent && (ExpectedContentLength == 0)) || (NotModified) )
-   {
-      // Do nothing if we already have an up to date copy of the content.
-      verboseMessage( "No content expected so none read\n" );
-      rc = 0;
-   }
-   else
-   {
-      rc = readContent( filePath );
-   }
+  if ( (ExpectedContentLengthSent && (ExpectedContentLength == 0)) || (NotModified) ) {
+    // Do nothing if we already have an up to date copy of the content.
+    verboseMessage( "No content expected so none read\n" );
+    rc = 0;
+  }
+  else {
+    char fileNameCorrectedExtension[ 5 ];
+    char fileName [ 100 ];
 
-   drainAndCloseSocket( );
+    // DOS only supports 8.3 file names, truncate the extension if needed
+    strncpy( fileNameCorrectedExtension, fileNameExtension, 4 );
+    fileNameCorrectedExtension[ 4 ] = 0;
+    sprintf( fileName, "%s%06lX%s", filePath, segmentNumber, fileNameCorrectedExtension );
+    rc = readContent( fileName );
+  }
 
-   if ( rc == 0 )
-   {
-      rc = mapResponseCode( HttpResponse );
-   }
-   else
-   {
-     rc = 1;
-   }
+  drainAndCloseSocket( );
 
-   free( inBuf );
-   shutdown( rc );
-   return 1;
+  if ( rc == 0 ) {
+    rc = mapResponseCode( HttpResponse );
+  }
+  else {
+    rc = 1;
+  }
+
+  free( inBuf );
+  shutdown( rc );
+  return 1;
 }
