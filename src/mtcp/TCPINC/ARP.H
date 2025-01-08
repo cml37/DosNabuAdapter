@@ -40,7 +40,6 @@
 
 #include CFG_H
 #include "types.h"
-#include "utils.h"
 
 // Each entry in the ARP table is fairly modest - 14 bytes at the moment.
 // If you get ARP table thrashing with the maximums defined here then you

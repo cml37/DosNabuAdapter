@@ -15,8 +15,9 @@
 
 #include "nabu.h"
 #include "utils.h"
+#include "htget.h"
 
-extern "C" 
+extern "C"
 {
    #include "nabutils.h"
 }
@@ -27,10 +28,13 @@ extern "C"
 // Clean up ugly code
 
 // The cycle path
-char cyclePath[20] = "C:\\cycle\\" ;
+char cyclePath[ 20 ] = "C:\\cycle\\" ;
+
+// The optional host and path
+char hostAndPath[ 200 ] = "nabu.retrotechchris.com/cycle2" ;
 
 // The COM port
-int com = 0;
+int com = 0 ;
 
 // Base on the way that byte reads are not blocking,
 // I've come up with a scheme to track the current processing
@@ -105,7 +109,7 @@ int main( int argc, char *argv[] )
 
    if( argc < 2 )
    {
-      printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> \n" ) ;
+      printf( "Usage: dosnabu <com number> <optional cycle path, defaults to C:\\cycle\\> <optional download host and path> \n" ) ;
       return 0 ;
    }
 
@@ -140,11 +144,16 @@ int main( int argc, char *argv[] )
 
    if( argc == 3 )
    {
-      strcpy( cyclePath, argv [ 2 ] );
+      strcpy( cyclePath, argv [ 2 ] ) ;
       if ( strlen( cyclePath ) < 20 && cyclePath[ strlen( cyclePath - 1 ) ] != '\\')
       {
-         strcat( cyclePath, "\\");
+         strcat( cyclePath, "\\") ;
       }
+   }
+
+   if (argc == 4 )
+   {
+       strcpy( hostAndPath, argv [ 3 ] ) ;
    }
 
    printf( "Starting and using serial port COM%s and cycle path %s\n", argv[1], cyclePath) ;
@@ -167,7 +176,7 @@ int main( int argc, char *argv[] )
       }
       if( ( serial_read( com, &ch, 1 ) ) > 0 )
       {
-         processNABU( ch, cyclePath ) ;
+         processNABU( ch, cyclePath, hostAndPath ) ;
       }
    }
 
@@ -312,7 +321,7 @@ void populatePacketHeaderAndCrc( long offset, unsigned char lastSegment, unsigne
 }
 
 // Create a file packet based on the current packet and segment number
-int createFilePacket( char* filePath )
+int createFilePacket( char* filePath, char* hostAndPath, int tryDownload)
 {
    char segmentName[ 100 ] ;
    FILE *file ;
@@ -325,7 +334,17 @@ int createFilePacket( char* filePath )
    file = fopen( segmentName, "rb" ) ;
    if ( file == NULL )
    {
-      return 0 ;
+      if ( tryDownload )
+      {
+         downloadFileViaHttp( filePath, hostAndPath, ".nabu", segmentNumber ) ;
+         file = fopen( segmentName, "rb" ) ;
+      }
+
+      if ( file == NULL )
+      {
+         return 0 ;
+      }
+
    }
 
    fseek( file, 0, SEEK_END ) ;
@@ -366,7 +385,7 @@ int createFilePacket( char* filePath )
 }
 
 // Load a file packet based on the current packet and segment number
-int loadFilePacket( char* filePath )
+int loadFilePacket( char* filePath, char* hostAndPath, int tryDownload )
 {
    int packetLength = 0 ;
    char segmentName[ 100 ] ;
@@ -379,6 +398,12 @@ int loadFilePacket( char* filePath )
    file = fopen( segmentName, "rb" ) ;
    if ( file == NULL )
    {
+      if (tryDownload )
+      {
+         downloadFileViaHttp(filePath, hostAndPath, ".pak", segmentNumber) ;
+         file = fopen( segmentName, "rb" ) ;
+      }
+
       return 0 ;
    }
 
@@ -452,7 +477,7 @@ void sendPacket( )
 }
 
 // Handle a file request
-int handleFileRequest( unsigned char b, char* filePath )
+int handleFileRequest( unsigned char b, char* filePath, char* hostAndPath )
 {
    unsigned char write[ 4 ] ;
    unsigned long tmp ;
@@ -516,14 +541,20 @@ int handleFileRequest( unsigned char b, char* filePath )
       }
       // We will try local file access, then download.
       // Ugly code. Wow, this program is brand new and already needs a refactor.
-      else if ( !loadFilePacket( filePath ) )
+      else if ( !loadFilePacket( filePath, hostAndPath, 0 ) )
       {
-         if ( !createFilePacket( filePath ) )
+         if ( !createFilePacket( filePath, hostAndPath, 0 ) )
          {
-            printf( "Could not load segment %06X and packet %06X\r\n", segmentNumber, packetNumber );
-            WriteCommByte( 0x90 ) ;
-            processingStage = 5;
-            return 1 ;
+            if ( !loadFilePacket( filePath, hostAndPath, 1 ) )
+            {
+               if ( !createFilePacket( filePath, hostAndPath, 1 ) )
+               {
+                  printf( "Could not load segment %06X and packet %06X\r\n", segmentNumber, packetNumber );
+                  WriteCommByte( 0x90 ) ;
+                  processingStage = 5;
+                  return 1 ;
+               }
+            }
          }
       }
 
@@ -593,7 +624,7 @@ int resetNabuState( )
 }
 
 // Main NABU processing loop
-void processNABU( unsigned char b, char* filePath )
+void processNABU( unsigned char b, char* filePath, char* hostAndPath )
 {
    int channel ;
    unsigned char write[ 3 ];
@@ -641,7 +672,7 @@ void processNABU( unsigned char b, char* filePath )
          {
             printf( "File Request: " ) ;
          }
-         if ( handleFileRequest(b, filePath ) )
+         if ( handleFileRequest(b, filePath, hostAndPath ) )
          {
             break ;
          }
@@ -712,7 +743,7 @@ void processNABU( unsigned char b, char* filePath )
          resetNabuState();
 
          // Let's try to execute the last inititialized command we had
-         processNABU( lastResetProcessingByte, filePath);
+         processNABU( lastResetProcessingByte, filePath, hostAndPath);
          break ;
    }
 }

@@ -29,7 +29,7 @@ extern "C"
 }
 
 int resetNabuState() ;
-void processNABU( unsigned char, char* ) ;
+void processNABU( unsigned char, char*, char* ) ;
 
 void freeLoadedPackets(void);
 void createTimeSegment(void);
