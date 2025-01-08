@@ -75,7 +75,6 @@ bool     QuietMode = false;
 
 
 // Globals filled in as a result of an HTTP response
-bool     NotModified = false;
 bool     TransferEncoding_Chunked = false;
 bool     ExpectedContentLengthSent = false;
 uint32_t ExpectedContentLength = 0;
@@ -657,6 +656,10 @@ int8_t readHeaders( void ) {
 
   if ( ExpectedContentLengthSent ) {
     verboseMessage( "Expected content length: %lu\n", ExpectedContentLength );
+    if ( ExpectedContentLength == 0 )
+    {
+      return -1;
+    }
   }
   else {
     verboseMessage( "No content length header sent\n" );
@@ -666,11 +669,8 @@ int8_t readHeaders( void ) {
     verboseMessage( "Chunked transfer encoding being used\n" );
   }
 
-
-  if ( response == 304 ) {
-    NotModified = true;
-    ExpectedContentLengthSent = true;
-    ExpectedContentLength = 0;
+  if ( response == 404 ) {
+    return -1;
   }
 
   return 0;
@@ -987,7 +987,6 @@ static int parseUrl( char* hostnameAndPath, char* fileNameExtension, unsigned lo
 
 int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtension, unsigned long segmentNumber ) {
 
-  NotModified = false;
   TransferEncoding_Chunked = false;
   ExpectedContentLengthSent = false;
   ExpectedContentLength = 0;
@@ -1050,7 +1049,7 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
 
   int rc;
 
-  if ( (ExpectedContentLengthSent && (ExpectedContentLength == 0)) || (NotModified) ) {
+  if ( (ExpectedContentLengthSent && (ExpectedContentLength == 0)) ) {
     // Do nothing if we already have an up to date copy of the content.
     verboseMessage( "No content expected so none read\n" );
     rc = 0;

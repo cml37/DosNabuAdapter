@@ -344,7 +344,6 @@ int createFilePacket( char* filePath, char* hostAndPath, int tryDownload)
       {
          return 0 ;
       }
-
    }
 
    fseek( file, 0, SEEK_END ) ;
@@ -398,13 +397,16 @@ int loadFilePacket( char* filePath, char* hostAndPath, int tryDownload )
    file = fopen( segmentName, "rb" ) ;
    if ( file == NULL )
    {
-      if (tryDownload )
+      if ( tryDownload )
       {
-         downloadFileViaHttp(filePath, hostAndPath, ".pak", segmentNumber) ;
+         downloadFileViaHttp( filePath, hostAndPath, ".pak", segmentNumber ) ;
          file = fopen( segmentName, "rb" ) ;
       }
 
-      return 0 ;
+      if ( file == NULL )
+      {
+         return 0 ;
+      }
    }
 
    fseek( file, 0, SEEK_END ) ;
