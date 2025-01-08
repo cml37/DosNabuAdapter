@@ -71,7 +71,7 @@
 
 
 bool     Verbose = false;
-bool     QuietMode = true;
+bool     QuietMode = false;
 
 
 // Globals filled in as a result of an HTTP response
@@ -219,7 +219,7 @@ uint8_t userWantsOut( void ) {
   }
 
   if ( biosIsKeyReady( ) ) {
-    char c = biosKeyRead( );
+    char c = (char) biosKeyRead( );
     if ( (c == 27) || (c == 3) ) {
       errorMessage( "Esc or Ctrl-C detected - aborting!\n");
       return 1;
@@ -915,7 +915,7 @@ int readContent( char* outputFilename ) {
 
       // Write whatever is in inBuf.
 
-      uint16_t bytesToWrite = nextChunkSize;
+      uint16_t bytesToWrite = (uint16_t) nextChunkSize;
       if ( bytesToWrite > inBufLen ) bytesToWrite = inBufLen;
 
       TRACE(( "HTGET: before write: inBufStartIndex=%u, bytesToWrite=%u\n", inBufStartIndex, inBufLen ));

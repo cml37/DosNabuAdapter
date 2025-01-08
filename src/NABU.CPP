@@ -101,6 +101,27 @@ char* errors[] =
    ""
 };
 
+// Creates a directory for storing the cycles.
+bool makeCycleDirectory( char* directory )
+{
+   struct stat st ;
+   char strip [ 100 ] ;
+
+   // Strip off the trailing slash before making the directory
+   strncpy( strip, directory, strlen( directory ) -1 ) ;
+   strip[ strlen(directory) - 1 ] = 0 ;
+
+   if ( stat( strip, &st ) == -1 )
+   {
+      if ( mkdir( strip ) == -1 )
+      {
+         printf( "Could not make cycle directory: \n%s %d", strip, strlen( directory) ) ;
+         return false;
+      }
+   }
+   return true;
+}
+
 // The entry point to the program
 int main( int argc, char *argv[] )
 {
@@ -150,6 +171,7 @@ int main( int argc, char *argv[] )
          strcat( cyclePath, "\\") ;
       }
    }
+   makeCycleDirectory( cyclePath ) ;
 
    if (argc == 4 )
    {
@@ -349,6 +371,10 @@ int createFilePacket( char* filePath, char* hostAndPath, int tryDownload )
       {
          return 0 ;
       }
+      else
+      {
+          printf( "Downloaded %s from %s\n", segmentName, hostAndPath );
+      }
    }
 
    fseek( file, 0, SEEK_END ) ;
@@ -411,6 +437,10 @@ int loadFilePacket( char* filePath, char* hostAndPath, int tryDownload )
       if ( file == NULL )
       {
          return 0 ;
+      }
+      else
+      {
+          printf( "Downloaded %s from %s\n", segmentName, hostAndPath );
       }
    }
 
