@@ -117,64 +117,6 @@ typedef struct {
 } ReturnCodeRec_t;
 
 
-ReturnCodeRec_t rcMappingTable[] = {
-
-  { 100, 199, 10 },  // Default for 100 to 199 if not mapped out
-
-  { 200, 299, 20 },  // Default for 200 to 299 if not mapped out
-  { 200, 200, 21 },  // OK
-  { 201, 201, 22 },  // Created
-  { 202, 202, 23 },  // Accepted
-  { 203, 203, 24 },  // Non-Authoritative Information
-  { 204, 204, 25 },  // No Content
-  { 205, 205, 26 },  // Reset Content
-  { 206, 206, 27 },  // Partial Content
-
-  { 300, 399, 30 },  // Default for 300 to 399 if not mapped out
-  { 300, 300, 31 },  // Multiple Choices
-  { 301, 301, 32 },  // Moved Permanently
-  { 302, 302, 33 },  // Found
-  { 303, 303, 34 },  // See Other
-  { 304, 304, 35 },  // Not Modified
-  { 305, 305, 36 },  // Use Proxy
-  { 307, 307, 37 },  // Temporary Redirect
-
-  { 400, 499, 40 },  // Default for 400 to 499 if not mapped out
-  { 400, 400, 41 },  // Bad Request
-  { 401, 401, 42 },  // Unauthorized
-  { 402, 402, 43 },  // Payment Required
-  { 403, 403, 44 },  // Forbidden
-  { 404, 404, 45 },  // Not Found
-  { 410, 410, 46 },  // Gone
-
-  { 500, 599, 50 },  // Default for 500 to 599 if not mapped out
-  { 500, 500, 51 },  // Internal Server Error
-  { 501, 501, 52 },  // Not Implemented
-  { 503, 503, 53 },  // Service Unavailable
-  { 505, 505, 54 },  // HTTP Version Not Supported
-  { 509, 509, 55 },  // Bandwidth Limit Exceeded
-
-};
-
-
-uint8_t mapResponseCode( uint16_t httpRc ) {
-
-  uint8_t rc = 0;
-
-  for ( uint8_t i = 0; i < sizeof(rcMappingTable)/sizeof(ReturnCodeRec_t); i++ ) {
-
-    if ( httpRc >= rcMappingTable[i].httpCodeStart && httpRc <= rcMappingTable[i].httpCodeEnd ) {
-      rc = rcMappingTable[i].dosRc;
-      if ( httpRc == rcMappingTable[i].httpCodeStart && httpRc == rcMappingTable[i].httpCodeEnd ) {
-        // Found our exact code - no point in scanning the rest of the table
-        break;
-      }
-    }
-
-  }
-
-  return rc;
-}
 
 
 
@@ -1128,12 +1070,9 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
     return 0;
   }
 
-  int rc;
-
   if ( (ExpectedContentLengthSent && (ExpectedContentLength == 0)) ) {
     // Do nothing if we already have an up to date copy of the content.
     verboseMessage( "No content expected so none read\n" );
-    rc = 0;
   }
   else {
     char fileNameCorrectedExtension[ 5 ];
@@ -1144,17 +1083,10 @@ int downloadFileViaHttp(char* filePath, char* hostAndPath, char* fileNameExtensi
     fileNameCorrectedExtension[ 4 ] = 0;
     sprintf( fileName, "%s%06lX%s", filePath, segmentNumber, fileNameCorrectedExtension );
     verboseMessage( "Reading content to filename %s\n", fileName );
-    rc = readContent( fileName );
+    readContent( fileName );
   }
 
   drainAndCloseSocket( );
-
-  if ( rc == 0 ) {
-    rc = mapResponseCode( HttpResponse );
-  }
-  else {
-    rc = 1;
-  }
 
   free( inBuf );
   CurrentlyProcessing = 0;
