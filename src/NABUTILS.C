@@ -54,7 +54,7 @@ int detectVideoMode()
    }
 
    // Second to last byte PCjr BIOS info area
-   ptr = (char*)_MK_FP( 0xf000, 0xfffe ) ;
+   ptr = (char*)MK_FP( 0xf000, 0xfffe ) ;
    if ( *ptr == 0xFD )
    {
       return videoCard_pcJr ;
@@ -64,7 +64,7 @@ int detectVideoMode()
    if ( *ptr == 0xFF )
    {
       // All Tandys return 0x21 at this address
-      ptr = (char*)_MK_FP( 0xf000, 0xc000 ) ;
+      ptr = (char*)MK_FP( 0xf000, 0xc000 ) ;
       if ( *ptr == 0x21 )
       {
          // Get System Environment

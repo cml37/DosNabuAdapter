@@ -16,6 +16,8 @@
 #include "nabu.h"
 #include "utils.h"
 #include "nabuhtgt.h"
+#include <i86.h>
+#include <direct.h>
 
 extern "C"
 {
